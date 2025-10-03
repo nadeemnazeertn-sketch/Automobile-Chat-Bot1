@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Automobile Chatbot — Demo</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#1e90ff;--muted:#94a3b8;--bubble:#0b1228}
+    *{box-sizing:border-box;font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071126 0%, #071827 100%);color:#eef2ff}
+    .app{max-width:980px;margin:28px auto;padding:20px}
+    header{display:flex;gap:16px;align-items:center}
+    .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#7c3aed);display:grid;place-items:center;font-weight:700}
+    h1{margin:0;font-size:20px}
+    p.lead{margin:6px 0 0;color:var(--muted)}
+
+    .card{background:var(--card);border-radius:14px;padding:18px;margin-top:18px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    .chat-wrap{display:grid;grid-template-columns:1fr 320px;gap:18px}
+
+    /* Chat column */
+    .chat-col{display:flex;flex-direction:column;height:560px}
+    .messages{flex:1;overflow:auto;padding:14px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent)}
+    .msg{margin:10px 0;display:flex}
+    .msg.user{justify-content:flex-end}
+    .bubble{max-width:70%;padding:10px 14px;border-radius:14px;background:var(--bubble);box-shadow:0 3px 12px rgba(2,6,23,0.6);line-height:1.35}
+    .msg.user .bubble{background:linear-gradient(90deg,var(--accent),#6dd3ff);color:#021124;border-radius:14px 14px 6px 14px}
+    .bot-label{font-size:12px;color:var(--muted);margin-bottom:6px}
+
+    .controls{display:flex;gap:8px;margin-top:12px}
+    input[type="text"]{flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    button.send{background:var(--accent);border:none;padding:10px 12px;border-radius:10px;color:#021124;font-weight:600}
+    .quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .pill{background:rgba(255,255,255,0.04);padding:6px 10px;border-radius:999px;font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+
+    /* Side panel */
+    .side{padding:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:10px}
+    .side h3{margin:0 0 8px 0}
+    .car-card{background:linear-gradient(180deg,#061027,transparent);padding:10px;border-radius:8px;margin-bottom:10px}
+    .car-meta{font-size:13px;color:var(--muted)}
+    .examples{margin-top:12px}
+    footer.small{font-size:12px;color:var(--muted);margin-top:10px}
+
+    /* scrollbar */
+    .messages::-webkit-scrollbar{width:10px}
+    .messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.04);border-radius:10px}
+
+    @media (max-width:880px){.chat-wrap{grid-template-columns:1fr}.side{order:2}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">A</div>
+      <div>
+        <h1>AutoAssist — Automobile Chatbot (demo)</h1>
+        <p class="lead">Ask about cars, prices, maintenance tips, or request a test-drive.</p>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="chat-wrap">
+        <div class="chat-col">
+          <div id="messages" class="messages" aria-live="polite"></div>
+
+          <div class="controls">
+            <input id="input" type="text" placeholder="Ask e.g. 'Compare City vs Amaze', or 'maintenance tips for diesel cars'" />
+            <button id="send" class="send">Send</button>
+          </div>
+
+          <div class="quick" aria-hidden="false">
+            <button class="pill" data-q="Show me SUVs under 25 lakhs">SUVs under 25 lakhs</button>
+            <button class="pill" data-q="Tell me about the features of Honda City">Features of Honda City</button>
+            <button class="pill" data-q="When should I service my car">When should I service my car?</button>
+            <button class="pill" data-q="Schedule a test drive for Hyundai Creta">Test drive — Creta</button>
+          </div>
+        </div>
+
+        <aside class="side">
+          <h3>Popular models</h3>
+          <div id="popular" class="pop-list"></div>
+
+          <div class="examples">
+            <h4>Try these</h4>
+            <div class="car-meta">Quick prompts and templates you can tap.</div>
+            <ul>
+              <li>Compare <em>City</em> vs <em>Amaze</em></li>
+              <li>Best family car under 15 lakhs</li>
+              <li>Fuel efficiency tips for long drives</li>
+            </ul>
+          </div>
+
+          <footer class="small">This is a static demo — no server required. Customize the JS to connect to APIs.</footer>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // === Simple knowledge base: add or replace with API calls ===
+  const CARS = [
+    {id:1,make:'Honda',model:'City',year:2024,priceLakh:12.5,segment:'Sedan',fuel:'Petrol',mpg:18,features:['Cruise control','Lane watch','6-airbags']},
+    {id:2,make:'Honda',model:'Amaze',year:2024,priceLakh:7.5,segment:'Compact',fuel:'Petrol',mpg:20,features:['Touchscreen','Reverse camera']},
+    {id:3,make:'Hyundai',model:'Creta',year:2025,priceLakh:13.5,segment:'SUV',fuel:'Petrol',mpg:16,features:['Sunroof','6-airbags','ADAS']},
+    {id:4,make:'Kia',model:'Seltos',year:2024,priceLakh:14.8,segment:'SUV',fuel:'Petrol',mpg:15.5,features:['BOSE audio','6-airbags']},
+    {id:5,make:'Maruti',model:'Swift',year:2024,priceLakh:6.5,segment:'Hatchback',fuel:'Petrol',mpg:22,features:['Lightweight','Fuel efficient']}
+  ];
+
+  // UI helpers
+  const messagesEl = document.getElementById('messages');
+  const inputEl = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+  const popularEl = document.getElementById('popular');
+
+  function appendMessage(text, who='bot'){
+    const wrapper = document.createElement('div');
+    wrapper.className = 'msg ' + (who==='user' ? 'user' : 'bot');
+    const bubbleWrap = document.createElement('div');
+    if(who==='bot'){
+      const label = document.createElement('div'); label.className='bot-label'; label.textContent='AutoAssist';
+      bubbleWrap.appendChild(label);
+    }
+    const b = document.createElement('div'); b.className='bubble'; b.innerHTML = text.replace(/\n/g,'<br>');
+    bubbleWrap.appendChild(b);
+    wrapper.appendChild(bubbleWrap);
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  // Seed greeting
+  appendMessage('Hi — I\'m AutoAssist. I can help with car comparisons, prices, maintenance tips, and test-drive requests. Try typing a question or use the example pills.');
+
+  // Render popular models
+  function renderPopular(){
+    popularEl.innerHTML = '';
+    CARS.slice(0,4).forEach(c=>{
+      const wrap = document.createElement('div'); wrap.className='car-card';
+      wrap.innerHTML = `<strong>${c.make} ${c.model}</strong><div class="car-meta">${c.segment} • ₹${(c.priceLakh).toFixed(2)} L</div>`;
+      popularEl.appendChild(wrap);
+    });
+  }
+  renderPopular();
+
+  // Very light NLP / rule-based responder
+  function respondTo(raw){
+    const txt = raw.trim();
+    if(!txt) return appendMessage('Please type a question so I can help.');
+    appendMessage(txt,'user');
+    const q = txt.toLowerCase();
+
+    // direct intents
+    if(/compare|vs|difference/.test(q)){
+      // look for two model names
+      const words = q.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+      const found = CARS.filter(c=> words.includes(c.model.toLowerCase()) || words.includes(c.make.toLowerCase()));
+      if(found.length>=2){
+        return appendMessage(formatCompare(found[0],found[1]));
+      }
+      if(found.length===1){
+        return appendMessage('I found one model. Try: "Compare City vs Amaze".');
+      }
+      return appendMessage('Tell me the two models to compare, e.g. "Compare City vs Amaze".');
+    }
+
+    if(/price|cost|₹|rs |rupee/.test(q)){
+      const match = CARS.find(c=> q.includes(c.model.toLowerCase()) || q.includes(c.make.toLowerCase()));
+      if(match) return appendMessage(`${match.make} ${match.model} (${match.year}) — Approx. ₹${(match.priceLakh).toFixed(2)} Lakh.`);
+      // list budget range
+      const under = q.match(/under\s*(\d+(?:\.\d+)?)/);
+      if(under){
+        const val = parseFloat(under[1]);
+        const list = CARS.filter(c=> c.priceLakh <= val);
+        if(list.length) return appendMessage(list.map(c=>`${c.make} ${c.model} — ₹${c.priceLakh} L`).join('\n'));
+      }
+      return appendMessage('Which model? Try: "Price of Creta" or "cars under 10"');
+    }
+
+    if(/feature|spec|specification|mpg|fuel|mileage/.test(q)){
+      const match = CARS.find(c=> q.includes(c.model.toLowerCase()) || q.includes(c.make.toLowerCase()));
+      if(match) return appendMessage(`${match.make} ${match.model} features:\n- ${match.features.join('\n- ')}\nFuel: ${match.fuel}, Mileage: ${match.mpg} kmpl (approx)`);
+      return appendMessage('Mention a model to get specs — e.g. "Features of Honda City"');
+    }
+
+    if(/service|maintenance|when should i service|service interval|oil change/.test(q)){
+      return appendMessage('General maintenance tips:\n- First service: 1,000–1,500 km or 1 month\n- Regular service: every 6 months or 7,500–10,000 km (follow manufacturer guide)\n- Oil: change every 8,000–10,000 km for modern oils\n- Keep tyre pressure 30–35 PSI and check before long trips');
+    }
+
+    if(/test drive|schedule|book|book a test/.test(q)){
+      const match = CARS.find(c=> q.includes(c.model.toLowerCase()) || q.includes(c.make.toLowerCase()));
+      const model = match ? `${match.make} ${match.model}` : 'your selected model';
+      return appendMessage(`Okay — I can help arrange a test drive for ${model}.\nPlease share: preferred city, date, and time (e.g. "Mumbai, Oct 20, morning").\nNOTE: This demo doesn't send bookings — replace with your backend API.`);
+    }
+
+    // fallback: try to find recommended cars
+    if(/best|recommend|family|budget|cheap|economy/.test(q)){
+      if(/family/.test(q)){
+        const list = CARS.filter(c=> c.segment==='SUV' || c.segment==='Sedan');
+        return appendMessage('Good family options:\n' + list.map(c=>`${c.make} ${c.model} — ₹${c.priceLakh} L`).join('\n'));
+      }
+      if(/budget|cheap|under/.test(q)){
+        const numMatch = q.match(/under\s*(\d+)/);
+        const val = numMatch ? parseFloat(numMatch[1]) : 10;
+        const list = CARS.filter(c=> c.priceLakh <= val);
+        if(list.length) return appendMessage('Budget options:\n'+list.map(c=>`${c.make} ${c.model} — ₹${c.priceLakh} L`).join('\n'));
+      }
+    }
+
+    // tiny semantic search: check if models are mentioned
+    const mention = CARS.find(c=> q.includes(c.model.toLowerCase()) || q.includes(c.make.toLowerCase()));
+    if(mention){
+      return appendMessage(`${mention.make} ${mention.model} (${mention.year}) — ₹${mention.priceLakh} L. Ask for specs, price, or comparisons.`);
+    }
+
+    // last resort
+    appendMessage('Sorry — I did not understand. Try: "Compare City vs Amaze", "Price of Creta", or "maintenance tips"');
+  }
+
+  function formatCompare(a,b){
+    return `Comparison: ${a.make} ${a.model} vs ${b.make} ${b.model}\n\nPrice:\n- ${a.make} ${a.model}: ₹${a.priceLakh} L\n- ${b.make} ${b.model}: ₹${b.priceLakh} L\n\nFuel & Mileage:\n- ${a.fuel} • ${a.mpg} kmpl\n- ${b.fuel} • ${b.mpg} kmpl\n\nHighlights:\n- ${a.make} ${a.model}: ${a.features.slice(0,3).join(', ')}\n- ${b.make} ${b.model}: ${b.features.slice(0,3).join(', ')}`;
+  }
+
+  // event wiring
+  sendBtn.addEventListener('click', ()=>{ respondTo(inputEl.value); inputEl.value=''; inputEl.focus(); });
+  inputEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ sendBtn.click(); } });
+  document.querySelectorAll('.pill').forEach(b=> b.addEventListener('click', e=>{ const q = e.currentTarget.dataset.q; inputEl.value = q; respondTo(q); }));
+
+  // small persistent history (localStorage)
+  const HIST_KEY = 'autoassist_history_v1';
+  function saveToHistory(role, text){
+    try{
+      const hist = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+      hist.push({t:Date.now(),role,text});
+      localStorage.setItem(HIST_KEY, JSON.stringify(hist.slice(-80)));
+    }catch(e){}
+  }
+
+  // wrap appendMessage to also save history
+  const _append = appendMessage;
+  appendMessage = function(text, who='bot'){
+    _append(text, who);
+    saveToHistory(who, text);
+  };
+
+  </script>
+</body>
+</html>
